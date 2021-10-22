@@ -114,7 +114,7 @@ namespace WebVTTStreamReader
                 }
                 catch(System.Net.WebException)
                 {
-                    Display.Error("Failed to fetch main M3U8 file");
+                    Console.WriteLine("[" + DateTime.Now.TimeOfDay + " ] Failed to fetch main M3U8 file");
                     Thread.Sleep(this.delayToRefresh * 1000);
                     continue;
                 }
@@ -176,7 +176,7 @@ namespace WebVTTStreamReader
             }
             catch(System.Net.WebException)
             {
-                Display.Error("Failed to fetch subtitle : " + url);
+                Console.WriteLine("[" + DateTime.Now.TimeOfDay + "Failed to fetch subtitle : " + url);
                 return;
             }
 
