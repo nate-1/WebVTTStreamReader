@@ -1,9 +1,10 @@
 using System;
+using System.Net;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using System.Net;
-using System.IO;
+using System.Diagnostics;
 
 namespace WebVTTStreamReader
 {
@@ -80,6 +81,10 @@ namespace WebVTTStreamReader
         {
             get { return this.streamListenerThread; }
         }
+        public bool IsRunning
+        {
+            get { return this.run; }
+        }
 
         /// <summary>Starting the stream lister thread</summary>
         public void RunStreamListener()
@@ -88,14 +93,13 @@ namespace WebVTTStreamReader
             this.streamListenerThread = new Thread(InvokeListenStream); 
             this.streamListenerThread.IsBackground = true;
             this.streamListenerThread.Start();
-
         }
         public void StopStreamListener(bool waitForTheThreadToStop = true)
         {
             this.run = false;
             if(waitForTheThreadToStop)
             {                
-                while(streamListenerThread.IsAlive || streamListenerThread.ThreadState is not ThreadState.Stopped or ThreadState.Aborted)
+                while(streamListenerThread.IsAlive || streamListenerThread.ThreadState is not System.Threading.ThreadState.Stopped or System.Threading.ThreadState.Aborted)
                 {
                     Thread.Sleep(100);
                 }
@@ -124,10 +128,12 @@ namespace WebVTTStreamReader
                     continue;
                 }
                 DateTime requestTime = DateTime.UtcNow;
-
                 await this.ReadStream(resStream);
-                
-                Thread.Sleep(this.delayToRefresh * 1000);
+
+                DateTime timeToWaitTo = requestTime.AddSeconds(this.delayToRefresh);
+                int milsToWait = (int) timeToWaitTo.Subtract(DateTime.UtcNow).TotalMilliseconds;
+                if(milsToWait > 0) 
+                    Thread.Sleep(this.delayToRefresh * 1000);
             }
         }
 
