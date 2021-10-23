@@ -4,7 +4,6 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using System.Diagnostics;
 
 namespace WebVTTStreamReader
 {
@@ -99,7 +98,7 @@ namespace WebVTTStreamReader
             this.run = false;
             if(waitForTheThreadToStop)
             {                
-                while(streamListenerThread.IsAlive || streamListenerThread.ThreadState is not System.Threading.ThreadState.Stopped or System.Threading.ThreadState.Aborted)
+                while(streamListenerThread.IsAlive || streamListenerThread.ThreadState is not ThreadState.Stopped or ThreadState.Aborted)
                 {
                     Thread.Sleep(100);
                 }
