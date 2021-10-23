@@ -33,8 +33,6 @@ namespace WebVTTStreamReader
         {
             get { return this.endTimeStamp; }
         }
-
-
     }
 
     public class SubStreamReader
@@ -114,7 +112,7 @@ namespace WebVTTStreamReader
                 }
                 catch(System.Net.WebException)
                 {
-                    Console.WriteLine("[" + DateTime.Now.TimeOfDay + " ] Failed to fetch main M3U8 file");
+                    Console.WriteLine("[" + DateTime.Now.TimeOfDay + "] Failed to fetch main M3U8 file");
                     Thread.Sleep(this.delayToRefresh * 1000);
                     continue;
                 }
@@ -172,11 +170,12 @@ namespace WebVTTStreamReader
             try
             {
                 WebRequest req = WebRequest.Create(url);
+                req.Timeout = this.timeout;
                 stream = req.GetResponse().GetResponseStream();
             }
             catch(System.Net.WebException)
             {
-                Console.WriteLine("[" + DateTime.Now.TimeOfDay + "Failed to fetch subtitle : " + url);
+                Console.WriteLine("[" + DateTime.Now.TimeOfDay + "] Failed to fetch subtitle: " + url);
                 return;
             }
 
@@ -208,24 +207,29 @@ namespace WebVTTStreamReader
                     }
                 }
             }
+            UpdateSubtitleEventArgs subEvent = new UpdateSubtitleEventArgs(
+                blockTextList.ToArray(), 
+                startTimestamp.AddMilliseconds(this.delayToRaiseEvent), 
+                startTimestamp.AddSeconds(duration).AddMilliseconds(this.delayToRaiseEvent)
+            );
 
-            Task.Run(() => {
+            if(this.delayToRaiseEvent == 0)
+            {
+                this.OnUpdateSubtitle(this, subEvent);
+            }
+            else 
+            {
+                Task.Run(() => {
 
-                DateTime timeTowaitTo = startTimestamp.AddMilliseconds(this.delayToRaiseEvent); 
-                int timeToWaitMs = (int) timeTowaitTo.Subtract(DateTime.UtcNow).TotalMilliseconds;
-                
-                if(timeToWaitMs > 0)
-                    Thread.Sleep(timeToWaitMs);
+                    DateTime timeTowaitTo = startTimestamp.AddMilliseconds(this.delayToRaiseEvent); 
+                    int timeToWaitMs = (int) timeTowaitTo.Subtract(DateTime.UtcNow).TotalMilliseconds;
+                    
+                    if(timeToWaitMs > 0)
+                        Thread.Sleep(timeToWaitMs);
 
-                this.OnUpdateSubtitle(
-                    this,
-                    new UpdateSubtitleEventArgs(
-                        blockTextList.ToArray(), 
-                        startTimestamp, 
-                        startTimestamp.AddSeconds(duration)
-                    )
-                );
-            }); 
+                    this.OnUpdateSubtitle(this, subEvent);
+                }); 
+            }
 
         }
     }
