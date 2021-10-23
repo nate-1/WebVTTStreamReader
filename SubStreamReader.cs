@@ -50,6 +50,8 @@ namespace WebVTTStreamReader
         private bool run;
         private Thread streamListenerThread;
 
+        private string lastBlockText;
+
         public SubStreamReader(string url, double timeInitOffsetInMils, int initDelayToRefreshInSec, double delayToRaiseEventInMils = 0, int requestTimeOutInMils = 2000)
         {
             this.url = url; 
@@ -57,6 +59,7 @@ namespace WebVTTStreamReader
             this.lastTimestamp = DateTime.UtcNow.AddMilliseconds(-timeInitOffsetInMils);
             this.delayToRaiseEvent = delayToRaiseEventInMils;
             this.timeout = requestTimeOutInMils;
+            this.lastBlockText = "";
         }
 
         public string Url
@@ -73,7 +76,12 @@ namespace WebVTTStreamReader
             get { return this.delayToRaiseEvent; }
             set { this.delayToRaiseEvent = value; }
         }
+        public Thread StreamListenerThread
+        {
+            get { return this.streamListenerThread; }
+        }
 
+        /// <summary>Starting the stream lister thread</summary>
         public void RunStreamListener()
         {
             this.run = true;
@@ -108,7 +116,6 @@ namespace WebVTTStreamReader
                     WebRequest req = WebRequest.Create(this.url);
                     req.Timeout = this.timeout;
                     resStream = req.GetResponse().GetResponseStream();
-                    // Display.Info("Request success");
                 }
                 catch(System.Net.WebException)
                 {
@@ -120,7 +127,6 @@ namespace WebVTTStreamReader
 
                 await this.ReadStream(resStream);
                 
-                // Display.Info( "Sleeping :  " + this.delayToRefresh * 1000);
                 Thread.Sleep(this.delayToRefresh * 1000);
             }
         }
@@ -184,6 +190,7 @@ namespace WebVTTStreamReader
             using(StreamReader sr = new StreamReader(stream))
             {
                 bool hasTextFromHere = false;
+                bool isFirstBlock = true;
                 string currentBlockText = "";
                 while(sr.Peek() >=  0)
                 {
@@ -199,14 +206,25 @@ namespace WebVTTStreamReader
                         if(String.IsNullOrWhiteSpace(currentLine))
                         {
                             hasTextFromHere = false;
+                            if(isFirstBlock && this.lastBlockText == currentBlockText)
+                            {
+                                isFirstBlock = false;
+                                currentBlockText = "";
+                                continue;
+                            }
+
                             blockTextList.Add(currentBlockText);
+                            this.lastBlockText = currentBlockText;
+                            isFirstBlock = false;
                             currentBlockText = "";
                             continue;
                         }
+                        
                         currentBlockText += currentLine; 
                     }
                 }
             }
+
             UpdateSubtitleEventArgs subEvent = new UpdateSubtitleEventArgs(
                 blockTextList.ToArray(), 
                 startTimestamp.AddMilliseconds(this.delayToRaiseEvent), 
