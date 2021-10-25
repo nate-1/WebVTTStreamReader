@@ -132,7 +132,7 @@ namespace WebVTTStreamReader
                 DateTime timeToWaitTo = requestTime.AddSeconds(this.delayToRefresh);
                 int milsToWait = (int) timeToWaitTo.Subtract(DateTime.UtcNow).TotalMilliseconds;
                 if(milsToWait > 0) 
-                    Thread.Sleep(this.delayToRefresh * 1000);
+                    Thread.Sleep(milsToWait);
             }
         }
 
