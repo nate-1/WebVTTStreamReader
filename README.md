@@ -5,7 +5,7 @@ The stream listener will run on background thread.
 
 In order for the library to work you need to pass the subtitle m3u8 url, you can find it by opening the main m3u8 url of the IPTV.
 
-To install this library execute this command in you C# project :
+To install this library execute this command in your C# project :
 ```sh
 dotnet add package WebVTTStreamReader
 ```
