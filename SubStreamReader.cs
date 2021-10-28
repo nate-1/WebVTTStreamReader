@@ -227,7 +227,7 @@ namespace WebVTTStreamReader
                             continue;
                         }
                         
-                        currentBlockText += currentLine; 
+                        currentBlockText += currentLine + " "; 
                     }
                 }
             }
