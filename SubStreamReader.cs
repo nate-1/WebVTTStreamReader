@@ -126,13 +126,15 @@ namespace WebVTTStreamReader
                     Thread.Sleep(this.delayToRefresh * 1000);
                     continue;
                 }
-                DateTime requestTime = DateTime.UtcNow;
                 await this.ReadStream(resStream);
 
-                DateTime timeToWaitTo = requestTime.AddSeconds(this.delayToRefresh);
+                DateTime timeToWaitTo = this.lastTimestamp.AddSeconds((this.delayToRefresh * 2) + 1);
                 int milsToWait = (int) timeToWaitTo.Subtract(DateTime.UtcNow).TotalMilliseconds;
+
                 if(milsToWait > 0) 
                     Thread.Sleep(milsToWait);
+                else 
+                    Thread.Sleep(10);
             }
         }
 
