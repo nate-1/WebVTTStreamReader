@@ -5,7 +5,7 @@
     <Version>1.0.1</Version>
     <Title>WebVTTStreamReader</Title>
     <Authors>Nathan Wurtz</Authors>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <Description>
       This package is a subtitle IPTV stream reader, it allows you to get the subtitle of a IPTV channel as they are received by the program.
       More information here :

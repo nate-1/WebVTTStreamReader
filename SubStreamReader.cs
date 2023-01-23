@@ -43,6 +43,7 @@ namespace WebVTTStreamReader
         public event UpdateSubtitle OnUpdateSubtitle;
         
         private string url; 
+        private string urlPath;
         private int delayToRefresh; 
         private int timeout;
         private DateTime lastTimestamp;
@@ -55,6 +56,7 @@ namespace WebVTTStreamReader
         public SubStreamReader(string url, double timeInitOffsetInMils, int initDelayToRefreshInSec, double delayToRaiseEventInMils = 0, int requestTimeOutInMils = 2000)
         {
             this.url = url; 
+            this.urlPath = url.Substring(0, url.LastIndexOf('/') + 1);
             this.delayToRefresh = initDelayToRefreshInSec;
             this.lastTimestamp = DateTime.UtcNow.AddMilliseconds(-timeInitOffsetInMils);
             this.delayToRaiseEvent = delayToRaiseEventInMils;
@@ -89,8 +91,10 @@ namespace WebVTTStreamReader
         public void RunStreamListener()
         {
             this.run = true;
-            this.streamListenerThread = new Thread(InvokeListenStream); 
-            this.streamListenerThread.IsBackground = true;
+            this.streamListenerThread = new Thread(() => this.ListenStream().GetAwaiter().GetResult())
+            {
+                IsBackground = true
+            }; 
             this.streamListenerThread.Start();
         }
         public void StopStreamListener(bool waitForTheThreadToStop = true)
@@ -104,10 +108,6 @@ namespace WebVTTStreamReader
                 }
             }
         }
-        private void InvokeListenStream()
-        {
-            this.ListenStream().GetAwaiter().GetResult();
-        }
 
         private async Task ListenStream()
         {
@@ -116,6 +116,7 @@ namespace WebVTTStreamReader
                 Stream resStream;
                 try
                 {
+                    DebugLog("Request main");
                     WebRequest req = WebRequest.Create(this.url);
                     req.Timeout = this.timeout;
                     resStream = req.GetResponse().GetResponseStream();
@@ -132,9 +133,9 @@ namespace WebVTTStreamReader
                 int milsToWait = (int) timeToWaitTo.Subtract(DateTime.UtcNow).TotalMilliseconds;
 
                 if(milsToWait > 0) 
-                    Thread.Sleep(milsToWait);
+                    Thread.Sleep(milsToWait + 500);
                 else 
-                    Thread.Sleep(10);
+                    Thread.Sleep(500);
             }
         }
 
@@ -142,20 +143,37 @@ namespace WebVTTStreamReader
         {
             bool timeFound = false;
             DateTime lastFoundTimestamp = this.lastTimestamp; 
-            double duration = 6;
+            double duration = 4;
             
             using(StreamReader sr = new StreamReader(stream))
             {
-                while(sr.Peek() >=  0)
+                while(true)
                 {
-                    string currentLine = await sr.ReadLineAsync();
+                    string currentLine;
+                    try
+                    {
+                        currentLine = await sr.ReadLineAsync();
+                        if(currentLine is null)
+                            break;
+                    }
+                    catch(Exception e)
+                    {   
+                        Console.WriteLine(e.ToString());
+                        if(this.lastTimestamp < lastFoundTimestamp)
+                        {
+                            this.lastTimestamp =  lastFoundTimestamp;
+                            timeFound = true; 
+                        }
+                        return;
+                    }
                     if(currentLine.StartsWith(TIMESTAMP_KEY_NAME))
                     {
                         DateTime currentTimeStamp = DateTime.Parse(currentLine.Replace(TIMESTAMP_KEY_NAME, "")).ToUniversalTime();
                         if(lastFoundTimestamp < currentTimeStamp)
                         {
-                            lastFoundTimestamp =  currentTimeStamp;
+                            lastFoundTimestamp = currentTimeStamp;
                             timeFound = true; 
+                            DebugLog("Time found: " + currentTimeStamp);
                         }
                         continue;
                     }
@@ -166,9 +184,13 @@ namespace WebVTTStreamReader
                             duration = Double.Parse(currentLine.Replace(DELAY_KEY_NAME, "").Replace(",", ""));
                             continue;
                         }
-                        if(currentLine.StartsWith("http"))
+                        if(currentLine.EndsWith("vtt"))
                         {
-                            await this.FetchSubtitlesBlock(currentLine, lastFoundTimestamp, duration);   
+                            string vttUrl = currentLine;
+                            if(!vttUrl.StartsWith("http"))
+                                vttUrl = this.urlPath + currentLine;
+
+                            await this.FetchSubtitlesBlock(vttUrl, lastFoundTimestamp, duration);   
                         }
                     }
                 }
@@ -256,6 +278,13 @@ namespace WebVTTStreamReader
                 }); 
             }
 
+        }
+
+        private void DebugLog(string message)
+        {
+            Console.ForegroundColor = ConsoleColor.DarkYellow; 
+            Console.WriteLine($"[{DateTime.Now.TimeOfDay}] {message}");
+            Console.ForegroundColor = ConsoleColor.White;
         }
     }
 }
